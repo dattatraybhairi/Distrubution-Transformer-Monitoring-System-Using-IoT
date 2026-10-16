@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1722">
+  <title>Transformer Lab | Monitoring Simulator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1722;
+      --panel: #122331;
+      --panel-soft: #172b3a;
+      --line: #294252;
+      --text: #e9f1f5;
+      --muted: #90a6b4;
+      --cyan: #58d5e8;
+      --green: #6cdda4;
+      --amber: #ffc66d;
+      --red: #ff7777;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 15% 0%, #173348 0, transparent 38%),
+        var(--bg);
+      color: var(--text);
+      font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, select, input { font: inherit; }
+    button, select {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #172b3a;
+      color: var(--text);
+    }
+    button { padding: 9px 13px; cursor: pointer; }
+    button:hover { border-color: var(--cyan); }
+    button:focus-visible, select:focus-visible, input:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 2px;
+    }
+
+    .shell { width: min(1180px, calc(100% - 36px)); margin: 0 auto; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 23px 0;
+      border-bottom: 1px solid #223947;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border: 1px solid #2c6372;
+      border-radius: 12px;
+      background: #12313d;
+      color: var(--cyan);
+      font-size: 22px;
+    }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(18px, 3vw, 23px); letter-spacing: .01em; }
+    .eyebrow, .section-kicker {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .demo-badge, .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px currentColor; }
+    .status-pill.warning { color: var(--amber); border-color: #6c5531; }
+    .status-pill.warning .dot { background: var(--amber); }
+    .status-pill.danger { color: var(--red); border-color: #6a3c42; }
+    .status-pill.danger .dot { background: var(--red); }
+
+    main { padding: 25px 0 40px; }
+    .intro { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 19px; }
+    .intro h2 { margin-top: 5px; font-size: 20px; }
+    .intro p { margin-top: 4px; color: var(--muted); }
+    .clock { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; }
+    .card, .panel {
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: linear-gradient(145deg, rgba(23, 43, 58, .96), rgba(16, 34, 47, .96));
+      box-shadow: 0 12px 32px rgba(0, 0, 0, .12);
+    }
+    .metric { min-height: 124px; padding: 16px; }
+    .metric-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); }
+    .metric-icon { font-size: 17px; color: var(--cyan); }
+    .metric-value { margin-top: 9px; font-size: 26px; font-weight: 650; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+    .metric-unit { margin-left: 4px; color: var(--muted); font-size: 13px; font-weight: 500; }
+    .metric-note { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .metric.alert .metric-value { color: var(--amber); }
+    .metric.critical .metric-value { color: var(--red); }
+
+    .main-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, .8fr); gap: 14px; margin-top: 14px; }
+    .panel { padding: 18px; }
+    .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .panel-heading h2 { font-size: 15px; }
+    .panel-subtitle { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .trend-panel { min-height: 290px; }
+    .chart-key { display: flex; gap: 14px; color: var(--muted); font-size: 11px; }
+    .key-item { display: inline-flex; align-items: center; gap: 6px; }
+    .key-line { width: 14px; height: 3px; border-radius: 2px; background: var(--cyan); }
+    .key-line.temp { background: var(--amber); }
+    canvas { display: block; width: 100%; height: 205px; margin-top: 12px; }
+    .chart-foot { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
+
+    .equipment-panel { display: flex; flex-direction: column; }
+    .transformer-visual {
+      display: grid;
+      min-height: 170px;
+      flex: 1;
+      place-items: center;
+      margin: 15px 0 12px;
+      overflow: hidden;
+      border: 1px solid #223b4a;
+      border-radius: 10px;
+      background:
+        linear-gradient(rgba(44, 72, 88, .18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(44, 72, 88, .18) 1px, transparent 1px),
+        #10212e;
+      background-size: 20px 20px;
+    }
+    .transformer-visual svg { width: min(100%, 330px); height: 160px; }
+    .equip-footer { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 11px; }
+    .equip-footer strong { color: var(--text); font-weight: 600; }
+
+    .bottom-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 14px; margin-top: 14px; }
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 17px; }
+    .control-label { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 9px; color: var(--muted); font-size: 12px; }
+    .control-label strong { color: var(--text); font-weight: 600; }
+    input[type="range"] { width: 100%; accent-color: var(--cyan); }
+    select { width: 100%; padding: 9px 10px; }
+    .button-row { display: flex; gap: 8px; margin-top: 16px; }
+    .button-primary { border-color: #2c8797; background: #155465; }
+    .button-danger { border-color: #744246; background: #44282e; }
+    .switch-state { align-self: center; color: var(--green); font-size: 12px; }
+    .switch-state.off { color: var(--muted); }
+    .alerts { display: grid; gap: 9px; margin-top: 15px; }
+    .alert-row { display: flex; align-items: flex-start; gap: 9px; padding: 10px; border: 1px solid #294252; border-radius: 8px; background: rgba(8, 22, 31, .3); }
+    .alert-mark { color: var(--green); }
+    .alert-row.warning .alert-mark { color: var(--amber); }
+    .alert-row.critical .alert-mark { color: var(--red); }
+    .alert-text { flex: 1; color: var(--muted); font-size: 12px; }
+    .alert-text strong { display: block; margin-bottom: 1px; color: var(--text); font-size: 12px; }
+    .no-alerts { color: var(--muted); font-size: 12px; }
+    footer { padding: 16px 0 24px; border-top: 1px solid #223947; color: var(--muted); font-size: 11px; text-align: center; }
+
+    @media (max-width: 850px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .main-grid, .bottom-grid { grid-template-columns: 1fr; }
+      .equipment-panel { min-height: 310px; }
+    }
+    @media (max-width: 520px) {
+      .shell { width: min(100% - 22px, 1180px); }
+      header { align-items: flex-start; }
+      .header-right { align-items: flex-end; flex-direction: column; gap: 6px; }
+      .demo-badge { font-size: 10px; }
+      .intro { align-items: flex-start; flex-direction: column; }
+      .metrics { gap: 9px; }
+      .metric { min-height: 112px; padding: 12px; }
+      .metric-value { font-size: 23px; }
+      .panel { padding: 14px; }
+      .controls { grid-template-columns: 1fr; gap: 13px; }
+      .chart-key { flex-direction: column; gap: 3px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">ϟ</div>
+        <div>
+          <div class="eyebrow">Power systems · test bench</div>
+          <h1>Transformer Lab</h1>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="demo-badge"><span class="dot"></span> SIMULATION ACTIVE</span>
+        <span class="status-pill" id="health-status"><span class="dot"></span><span id="health-text">Normal</span></span>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div>
+          <div class="section-kicker">Distribution transformer · TR-01</div>
+          <h2>Live condition monitoring</h2>
+          <p>Sensor readings are simulated locally for demonstration.</p>
+        </div>
+        <div class="clock" id="clock" aria-live="off">--:--:--</div>
+      </section>
+
+      <section class="metrics" aria-label="Transformer sensor readings">
+        <article class="card metric" id="metric-voltage">
+          <div class="metric-top"><span>Line voltage</span><span class="metric-icon">ϟ</span></div>
+          <div class="metric-value"><span id="voltage">230</span><span class="metric-unit">V</span></div>
+          <div class="metric-note">Nominal · 230 V</div>
+        </article>
+        <article class="card metric" id="metric-current">
+          <div class="metric-top"><span>Load current</span><span class="metric-icon">↯</span></div>
+          <div class="metric-value"><span id="current">12.4</span><span class="metric-unit">A</span></div>
+          <div class="metric-note">Estimated from load setting</div>
+        </article>
+        <article class="card metric" id="metric-temp">
+          <div class="metric-top"><span>Oil temperature</span><span class="metric-icon">♨</span></div>
+          <div class="metric-value"><span id="temperature">48.2</span><span class="metric-unit">°C</span></div>
+          <div class="metric-note">Warning at 75 °C</div>
+        </article>
+        <article class="card metric" id="metric-oil">
+          <div class="metric-top"><span>Oil level</span><span class="metric-icon">◒</span></div>
+          <div class="metric-value"><span id="oil">82</span><span class="metric-unit">%</span></div>
+          <div class="metric-note">Tank level estimate</div>
+        </article>
+        <article class="card metric" id="metric-humidity">
+          <div class="metric-top"><span>Ambient humidity</span><span class="metric-icon">◌</span></div>
+          <div class="metric-value"><span id="humidity">46</span><span class="metric-unit">%</span></div>
+          <div class="metric-note">Enclosure sensor</div>
+        </article>
+        <article class="card metric" id="metric-vibration">
+          <div class="metric-top"><span>Vibration</span><span class="metric-icon">〰</span></div>
+          <div class="metric-value"><span id="vibration">12</span><span class="metric-unit">mg</span></div>
+          <div class="metric-note">Warning at 100 mg</div>
+        </article>
+        <article class="card metric" id="metric-body-temp">
+          <div class="metric-top"><span>Body temperature</span><span class="metric-icon">♨</span></div>
+          <div class="metric-value"><span id="body-temperature">51.6</span><span class="metric-unit">°C</span></div>
+          <div class="metric-note">Tank surface sensor</div>
+        </article>
+        <article class="card metric" id="metric-load">
+          <div class="metric-top"><span>Load utilization</span><span class="metric-icon">▥</span></div>
+          <div class="metric-value"><span id="load-reading">42</span><span class="metric-unit">%</span></div>
+          <div class="metric-note">Simulated transformer load</div>
+        </article>
+      </section>
+
+      <section class="main-grid">
+        <article class="panel trend-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Sensor trends</h2>
+              <p class="panel-subtitle">Recent simulated temperature and load response</p>
+            </div>
+            <div class="chart-key" aria-label="Chart legend">
+              <span class="key-item"><span class="key-line"></span>Oil temp · °C</span>
+              <span class="key-item"><span class="key-line temp"></span>Load · %</span>
+            </div>
+          </div>
+          <canvas id="trend-chart" aria-label="Trend graph of oil temperature and load"></canvas>
+          <div class="chart-foot"><span>60 seconds ago</span><span>Live</span><span>Now</span></div>
+        </article>
+
+        <article class="panel equipment-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Test bench overview</h2>
+              <p class="panel-subtitle">Single-phase distribution unit</p>
+            </div>
+            <span class="status-pill"><span class="dot"></span>Online</span>
+          </div>
+          <div class="transformer-visual">
+            <svg viewBox="0 0 360 170" role="img" aria-label="Illustration of a distribution transformer">
+              <defs>
+                <linearGradient id="tank" x1="0" x2="1" y1="0" y2="1">
+                  <stop offset="0" stop-color="#28495b"/>
+                  <stop offset="1" stop-color="#173141"/>
+                </linearGradient>
+              </defs>
+              <g fill="none" stroke="#5a7a8b" stroke-width="2">
+                <path d="M95 33h170v103H95z" fill="url(#tank)"/>
+                <path d="M108 47h144M108 56h144" opacity=".35"/>
+                <path d="M122 33V16m38 17V9m40 24V9m38 24V16"/>
+                <path d="M116 16h12m34-7h16m24 0h16m17 7h12"/>
+                <path d="M107 136v10m146-10v10M90 146h180"/>
+                <path d="M264 57h19v56h-19M283 67h17v36h-17" stroke="#58d5e8"/>
+                <path d="M55 85h40m170 0h40" stroke="#58d5e8" stroke-dasharray="5 5"/>
+              </g>
+              <g fill="#a9c3cf" font-family="system-ui,sans-serif" font-size="10">
+                <text x="127" y="88">DISTRIBUTION</text>
+                <text x="147" y="103">TRANSFORMER</text>
+                <text x="133" y="121" fill="#58d5e8">TR-01 · 25 kVA</text>
+              </g>
+              <circle cx="75" cy="85" r="5" fill="#58d5e8"/>
+              <circle cx="318" cy="85" r="5" fill="#58d5e8"/>
+            </svg>
+          </div>
+          <div class="equip-footer"><span>Asset <strong>TR-01</strong></span><span>Rating <strong>25 kVA</strong></span><span>Mode <strong id="mode-label">Normal</strong></span></div>
+        </article>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Simulation controls</h2>
+              <p class="panel-subtitle">Change the test conditions in real time</p>
+            </div>
+          </div>
+          <div class="controls">
+            <label>
+              <span class="control-label"><span>Load setting</span><strong><span id="load-value">42</span>%</strong></span>
+              <input id="load-control" type="range" min="0" max="120" value="42" aria-label="Simulated load setting">
+            </label>
+            <label>
+              <span class="control-label"><span>Test scenario</span></span>
+              <select id="scenario" aria-label="Choose a simulation scenario">
+                <option value="normal">Normal operation</option>
+                <option value="overload">Overload test</option>
+                <option value="overheat">Overheating test</option>
+                <option value="vibration">Vibration test</option>
+              </select>
+            </label>
+          </div>
+          <div class="button-row">
+            <button class="button-primary" id="relay-button" type="button" aria-pressed="true">Disconnect load</button>
+            <span class="switch-state" id="relay-state">Load connected</span>
+            <button id="pause-button" type="button" style="margin-left:auto">Pause simulation</button>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Lab alerts</h2>
+              <p class="panel-subtitle">Threshold checks update as values change</p>
+            </div>
+          </div>
+          <div class="alerts" id="alerts" aria-live="polite">
+            <div class="no-alerts">All monitored values are within normal ranges.</div>
+          </div>
+        </article>
+      </section>
+    </main>
+    <footer>Educational simulation only · No live sensors or relay are connected</footer>
+  </div>
+
+  <script>
+    const readings = {
+      voltage: 230,
+      current: 12.4,
+      temperature: 48.2,
+      oil: 82,
+      humidity: 46,
+      vibration: 12,
+      bodyTemperature: 51.6,
+      load: 42
+    };
+    const history = Array.from({ length: 48 }, (_, index) => ({
+      temperature: readings.temperature + Math.sin(index / 5) * 1.2,
+      load: readings.load + Math.cos(index / 7) * 5
+    }));
+    const loadControl = document.querySelector("#load-control");
+    const scenarioControl = document.querySelector("#scenario");
+    const relayButton = document.querySelector("#relay-button");
+    const pauseButton = document.querySelector("#pause-button");
+    const canvas = document.querySelector("#trend-chart");
+    const context = canvas.getContext("2d");
+    let loadConnected = true;
+    let paused = false;
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value;
+    }
+
+    function updateClock() {
+      setText("clock", new Date().toLocaleTimeString());
+    }
+
+    function setScenario(scenario) {
+      if (scenario === "overload") {
+        loadControl.value = 108;
+      } else if (scenario === "overheat") {
+        loadControl.value = 72;
+        readings.temperature = Math.max(readings.temperature, 74);
+      } else if (scenario === "vibration") {
+        loadControl.value = 48;
+        readings.vibration = 145;
+      } else {
+        readings.vibration = 12;
+      }
+      readings.load = Number(loadControl.value);
+      setText("mode-label", scenarioControl.options[scenarioControl.selectedIndex].text.replace(" test", ""));
+      render();
+    }
+
+    function updateReadings() {
+      if (paused) return;
+      const scenario = scenarioControl.value;
+      const targetLoad = loadConnected ? Number(loadControl.value) : 0;
+      readings.load += (targetLoad - readings.load) * 0.22;
+      readings.current = readings.load * 0.31 + (loadConnected ? 0.2 : 0);
+
+      const targetTemp = 34 + readings.load * 0.34 + (scenario === "overheat" ? 21 : 0);
+      readings.temperature += (targetTemp - readings.temperature) * 0.08 + (Math.random() - 0.5) * 0.45;
+      readings.bodyTemperature += ((readings.temperature + 3.5) - readings.bodyTemperature) * 0.12;
+      readings.voltage = 230 - readings.load * 0.045 + (Math.random() - 0.5) * 1.8;
+      readings.oil = Math.max(0, Math.min(100, readings.oil + (Math.random() - 0.5) * 0.12));
+      readings.humidity = Math.max(30, Math.min(70, readings.humidity + (Math.random() - 0.5) * 0.8));
+      if (scenario !== "vibration") {
+        readings.vibration = Math.max(4, 12 + readings.load * 0.15 + (Math.random() - 0.5) * 5);
+      } else {
+        readings.vibration += (145 - readings.vibration) * 0.16;
+      }
+
+      history.push({ temperature: readings.temperature, load: readings.load });
+      if (history.length > 48) history.shift();
+      render();
+    }
+
+    function setMetricState(id, state) {
+      const metric = document.getElementById(id);
+      metric.classList.toggle("alert", state === "warning");
+      metric.classList.toggle("critical", state === "critical");
+    }
+
+    function updateAlerts() {
+      const alerts = [];
+      if (readings.temperature >= 85) {
+        alerts.push(["critical", "Oil temperature critical", "Temperature is above 85 °C. Reduce load and investigate cooling."]);
+      } else if (readings.temperature >= 75) {
+        alerts.push(["warning", "Oil temperature high", "Temperature has crossed the 75 °C warning threshold."]);
+      }
+      if (readings.load >= 100) {
+        alerts.push(["warning", "Overload detected", "Simulated load is at or above the 25 kVA rating."]);
+      }
+      if (readings.vibration >= 100) {
+        alerts.push(["warning", "Abnormal vibration", "Vibration has crossed the 100 mg threshold."]);
+      }
+      if (readings.oil < 30) {
+        alerts.push(["warning", "Oil level low", "Oil level is below 30%."]);
+      }
+
+      const alertContainer = document.querySelector("#alerts");
+      alertContainer.replaceChildren();
+      if (alerts.length === 0) {
+        const message = document.createElement("div");
+        message.className = "no-alerts";
+        message.textContent = "All monitored values are within normal ranges.";
+        alertContainer.append(message);
+      } else {
+        for (const [severity, title, description] of alerts) {
+          const row = document.createElement("div");
+          row.className = `alert-row ${severity}`;
+          const mark = document.createElement("span");
+          mark.className = "alert-mark";
+          mark.textContent = severity === "critical" ? "●" : "▲";
+          const text = document.createElement("span");
+          text.className = "alert-text";
+          const heading = document.createElement("strong");
+          heading.textContent = title;
+          text.append(heading, document.createTextNode(description));
+          row.append(mark, text);
+          alertContainer.append(row);
+        }
+      }
+
+      const critical = alerts.some(([severity]) => severity === "critical");
+      const warning = alerts.length > 0;
+      const status = document.querySelector("#health-status");
+      status.classList.toggle("danger", critical);
+      status.classList.toggle("warning", warning && !critical);
+      setText("health-text", critical ? "Critical" : warning ? "Attention" : "Normal");
+      setMetricState("metric-temp", readings.temperature >= 85 ? "critical" : readings.temperature >= 75 ? "warning" : "");
+      setMetricState("metric-load", readings.load >= 100 ? "warning" : "");
+      setMetricState("metric-vibration", readings.vibration >= 100 ? "warning" : "");
+      setMetricState("metric-oil", readings.oil < 30 ? "warning" : "");
+    }
+
+    function drawChart() {
+      const bounds = canvas.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = Math.round(bounds.width * scale);
+      canvas.height = Math.round(bounds.height * scale);
+      context.setTransform(scale, 0, 0, scale, 0, 0);
+      const width = bounds.width;
+      const height = bounds.height;
+      const pad = { top: 12, right: 9, bottom: 12, left: 28 };
+      const chartWidth = width - pad.left - pad.right;
+      const chartHeight = height - pad.top - pad.bottom;
+      context.clearRect(0, 0, width, height);
+
+      context.font = "10px system-ui, sans-serif";
+      context.textBaseline = "middle";
+      for (let i = 0; i <= 4; i++) {
+        const y = pad.top + (chartHeight * i) / 4;
+        context.strokeStyle = "rgba(143, 168, 181, .16)";
+        context.beginPath();
+        context.moveTo(pad.left, y);
+        context.lineTo(width - pad.right, y);
+        context.stroke();
+        context.fillStyle = "#78909e";
+        context.fillText(String(100 - i * 25), 2, y);
+      }
+
+      function plot(key, color, min, max) {
+        context.beginPath();
+        history.forEach((point, index) => {
+          const x = pad.left + (index / (history.length - 1)) * chartWidth;
+          const normalized = Math.max(0, Math.min(1, (point[key] - min) / (max - min)));
+          const y = pad.top + (1 - normalized) * chartHeight;
+          if (index === 0) context.moveTo(x, y);
+          else context.lineTo(x, y);
+        });
+        context.strokeStyle = color;
+        context.lineWidth = 2;
+        context.lineJoin = "round";
+        context.stroke();
+      }
+      plot("temperature", "#58d5e8", 25, 100);
+      plot("load", "#ffc66d", 0, 125);
+    }
+
+    function render() {
+      setText("voltage", readings.voltage.toFixed(1));
+      setText("current", readings.current.toFixed(1));
+      setText("temperature", readings.temperature.toFixed(1));
+      setText("oil", readings.oil.toFixed(0));
+      setText("humidity", readings.humidity.toFixed(0));
+      setText("vibration", readings.vibration.toFixed(0));
+      setText("body-temperature", readings.bodyTemperature.toFixed(1));
+      setText("load-reading", readings.load.toFixed(0));
+      setText("load-value", loadControl.value);
+      updateAlerts();
+      drawChart();
+    }
+
+    loadControl.addEventListener("input", () => {
+      if (scenarioControl.value !== "overheat" && scenarioControl.value !== "vibration") {
+        scenarioControl.value = "normal";
+        setText("mode-label", "Normal");
+      }
+      render();
+    });
+    scenarioControl.addEventListener("change", () => setScenario(scenarioControl.value));
+    relayButton.addEventListener("click", () => {
+      loadConnected = !loadConnected;
+      relayButton.textContent = loadConnected ? "Disconnect load" : "Connect load";
+      relayButton.setAttribute("aria-pressed", String(loadConnected));
+      setText("relay-state", loadConnected ? "Load connected" : "Load disconnected");
+      document.querySelector("#relay-state").classList.toggle("off", !loadConnected);
+    });
+    pauseButton.addEventListener("click", () => {
+      paused = !paused;
+      pauseButton.textContent = paused ? "Resume simulation" : "Pause simulation";
+      document.querySelector(".demo-badge").innerHTML = `<span class="dot"></span> SIMULATION ${paused ? "PAUSED" : "ACTIVE"}`;
+    });
+    window.addEventListener("resize", drawChart);
+
+    updateClock();
+    render();
+    window.setInterval(updateClock, 1000);
+    window.setInterval(updateReadings, 1000);
+  </script>
+</body>
+</html>
